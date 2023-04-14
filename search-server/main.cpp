@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <iostream>
-#include <cassert>
 #include <cmath>
 #include <map>
 #include <set>
@@ -249,6 +248,101 @@ private:
     }
 };
 
+// -------- Перегрузка операторов вывода для контейнеров -------
+
+// Перегруженный оператор вывода для пар словаря
+template <typename First, typename Second>
+ostream& operator<<(ostream& out, const pair<First, Second>& p) {
+    return out << p.first << ": "s << p.second;
+}
+
+// Универсальная функция вывода для контейнера
+template <typename Container>
+ostream& Print(ostream& out, const Container& container) {
+    bool is_first = true;
+
+    for (const auto& element : container) {
+        if (!is_first) {
+            out << ", "s;
+        }
+        is_first = false;
+        out << element;
+    }
+    
+    return out;
+}
+
+// Перегруженный оператор вывода для вектора
+template <typename Element>
+ostream& operator<<(ostream& out, const vector<Element>& container) {
+    out << "["s;
+    Print(out, container);
+    out << "]"s;
+    return out;
+}
+
+// Перегруженный оператор вывода для множества
+template <typename Element>
+ostream& operator<<(ostream& out, const set<Element>& container) {
+    out << "{"s;
+    Print(out, container);
+    out << "}"s;
+    return out;
+}
+
+// Перегруженный оператор вывода для словаря
+template <typename Key, typename Value>
+ostream& operator<<(ostream& out, const map<Key, Value>& container) {
+    out << "{"s;
+    Print(out, container);
+    out << "}"s;
+    return out;
+}
+
+// -------- Макросы фреймворка собственного тестирования -------
+
+void AssertImpl(bool value, const string& expr_str, const string& file, const string& func, unsigned line, const string& hint) {
+    if (!value) {
+        cerr << file << "("s << line << "): "s << func << ": "s;
+        cerr << "ASSERT("s << expr_str << ") failed."s;
+        if (!hint.empty()) {
+            cerr << " Hint: "s << hint;
+        }
+        cerr << endl;
+        abort();
+    }
+}
+
+#define ASSERT(expr) AssertImpl((expr), #expr, __FILE__, __FUNCTION__, __LINE__, ""s)
+#define ASSERT_HINT(expr, hint) AssertImpl((expr), #expr, __FILE__, __FUNCTION__, __LINE__, (hint))
+
+template<typename T, typename U>
+void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file, const string& func, unsigned line, const string& hint) {
+    if (t != u) {
+        cerr << boolalpha;
+        cerr << file << "("s << line << "): "s << func << ": "s;
+        cerr << "ASSERT_EQUAL("s << t_str << ", "s << u_str << ") failed: "s;
+        cerr << t << " != "s << u << "."s;
+        if (!hint.empty()) {
+            cerr << " Hint: "s << hint;
+        }
+        cerr << endl;
+        abort();
+    }
+}
+
+#define ASSERT_EQUAL(a, b) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, ""s)
+#define ASSERT_EQUAL_HINT(a, b, hint) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, (hint))
+
+// Функция и макрос для запуска тестов
+template<typename Func>
+void RunTestImpl(const Func& f, const string& func) {
+    f();
+    cerr << func << " OK"s << endl;
+}
+
+#define RUN_TEST(func) RunTestImpl((func), #func)
+
 // -------- Начало модульных тестов поисковой системы ----------
 
 // Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
@@ -265,10 +359,10 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
 
         const auto found_docs = server.FindTopDocuments("in"s);
-        assert(found_docs.size() == 1);
+        ASSERT_EQUAL(found_docs.size(), 1u);
 
         const Document& doc0 = found_docs[0];
-        assert(doc0.id == doc_id);
+        ASSERT_EQUAL(doc0.id, doc_id);
     }
 
     // Затем убеждаемся, что поиск этого же слова, входящего в список стоп-слов,
@@ -277,7 +371,7 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
         SearchServer server;
         server.SetStopWords("in the"s);
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        assert(server.FindTopDocuments("in"s).empty());
+        ASSERT_HINT(server.FindTopDocuments("in"s).empty(), "Stop words must be excluded from documents"s);
     }
 }
 
@@ -293,15 +387,15 @@ void TestAddedDocumentInQuery() {
     // Смотрим количество документов по слову "квас" и id первого
     {
         const auto found_docs = server.FindTopDocuments("квас"s);
-        assert(found_docs.size() == 2);
-        assert(found_docs[0].id == 0);
+        ASSERT_EQUAL(found_docs.size(), 2u);
+        ASSERT_EQUAL(found_docs[0].id, 0);
     }
 
     // Смотрим количество документов по слову "кошара" и id второго
     {
         const auto found_docs = server.FindTopDocuments("кошара"s);
-        assert(found_docs.size() == 1);
-        assert(found_docs[0].id == 2);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        ASSERT_EQUAL(found_docs[0].id, 2);
     }
 }
 
@@ -317,14 +411,14 @@ void TestStopWordsRemovedFromDocuments() {
     {
         server.SetStopWords("и"s);
         const auto found_docs = server.FindTopDocuments("и"s);
-        assert(found_docs.size() == 0);
+        ASSERT_HINT(found_docs.empty(), "Stop words must be excluded from documents"s);
     }
 
     // Убираем несколько стоп-слов
     {
         server.SetStopWords("и в на"s);
         const auto found_docs = server.FindTopDocuments("на"s);
-        assert(found_docs.size() == 0);
+        ASSERT_HINT(found_docs.empty(), "Stop words must be excluded from documents"s);
     }
 }
 
@@ -339,13 +433,13 @@ void TestMinusWordAreNotInSearchResult() {
     // Убираем из поиска одно минус-слово
     {
         const auto found_docs = server.FindTopDocuments("вкусный -квас продается на площади"s);
-        assert(found_docs.size() == 1);
+        ASSERT_EQUAL(found_docs.size(), 1u);
     }
 
     // Убираем из поиска несколько минус-слов
     {
         const auto found_docs = server.FindTopDocuments("прохладный -квас продается -кошара"s);
-        assert(found_docs.size() == 1);
+        ASSERT_EQUAL(found_docs.size(), 1u);
     }
 }
 
@@ -364,9 +458,9 @@ void TestDocumentsMatching() {
         tuple<vector<string>, DocumentStatus> match_document = server.MatchDocument("интересная выставка красивых котов"s, 0);
         const auto [words, _] = match_document;
 
-        assert(words.size() == 2);
+        ASSERT_EQUAL(words.size(), 2u);
         for (const auto& word : words) {
-            assert(matched_words.count(word) != 0);
+            ASSERT_HINT(matched_words.count(word) != 0, "Documents must match"s);
         }
     }
 
@@ -374,7 +468,7 @@ void TestDocumentsMatching() {
     {
         tuple<vector<string>, DocumentStatus> match_document = server.MatchDocument("интересная -выставка красивых котов"s, 0);
         const auto [words, _] = match_document;
-        assert(words.size() == 0);
+        ASSERT_HINT(words.empty(), "Minus words must exclude match of query with document"s);
     }
 }
 
@@ -391,10 +485,10 @@ void TestRelevanceDescendingSorting() {
     // А также релевантность текущего документа >= релевантности следующего документа
     {
         const auto found_docs = server.FindTopDocuments("вкусный квас продается на площади"s);
-        assert(found_docs.size() == 3);
+        ASSERT_EQUAL_HINT(found_docs.size(), 3u, "Number of documents must be the same after sorting by relevance"s);
 
         for (size_t i = 0; i < found_docs.size() - 1; ++i) {
-            assert(found_docs[i].relevance >= found_docs[i + 1].relevance);
+            ASSERT_HINT(found_docs[i].relevance >= found_docs[i + 1].relevance, "Documents must be in descending order by relevance"s);
         }
     }
 }
@@ -411,19 +505,19 @@ void TestCorrectRatingComputing() {
     // Первый документ с id 0, его рейтинг = (int) (1 + 2 + 5) / 3 = 2 
     {
         const auto found_docs = server.FindTopDocuments("квас"s);
-        assert(found_docs[0].rating == 2);
+        ASSERT_EQUAL_HINT(found_docs[0].rating, 2, "Average rating of documents must equal arithmetic mean of all ratings"s);
     }
 
     // Первый документ с id 1, его рейтинг = (int) (-1 + 1) / 2 = 0
     {
         const auto found_docs = server.FindTopDocuments("прохладный"s);
-        assert(found_docs[0].rating == 0);
+        ASSERT_EQUAL(found_docs[0].rating, 0);
     }
 
     // Первый документ с id 3, его рейтинг = (int) (10) / 1 = 10
     {
         const auto found_docs = server.FindTopDocuments("электричка"s);
-        assert(found_docs[0].rating == 10);
+        ASSERT_EQUAL(found_docs[0].rating, 10);
     }
 }
 
@@ -438,15 +532,15 @@ void TestSearchResultsFilteredWithPredicates() {
     // Находим документы с четными id
     {
         const auto found_docs = server.FindTopDocuments("вкусный прохладный квас"s, [] (int document_id, DocumentStatus document_status, int document_rating) {return document_id % 2 == 0;});
-        assert(found_docs.size() == 1);
-        assert(found_docs[0].id == 0);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        ASSERT_EQUAL(found_docs[0].id, 0);
     }
 
     // Находим документы с рейтингом >= 2
     {
         const auto found_docs = server.FindTopDocuments("квас на площади"s, [] (int document_id, DocumentStatus document_status, int document_rating) {return document_rating >= 2;});
-        assert(found_docs.size() == 2);
-        assert(found_docs[0].id == 0);
+        ASSERT_EQUAL(found_docs.size(), 2u);
+        ASSERT_EQUAL(found_docs[0].id, 0);
     }
 }
 
@@ -462,29 +556,29 @@ void TestSearchDocumentsWithStatus() {
     // Проверяем документы со статусом ACTUAL
     {
         const auto found_docs = server.FindTopDocuments("квас на площади"s, DocumentStatus::ACTUAL);
-        assert(found_docs.size() == 2);
-        assert(found_docs[0].id == 0);
+        ASSERT_EQUAL(found_docs.size(), 2u);
+        ASSERT_EQUAL(found_docs[0].id, 0);
     }
 
     // Проверяем документы со статусом BANNED
     {
         const auto found_docs = server.FindTopDocuments("квас на площади"s, DocumentStatus::BANNED);
-        assert(found_docs.size() == 1);
-        assert(found_docs[0].id == 1);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        ASSERT_EQUAL(found_docs[0].id, 1);
     }
 
     // Проверяем документы со статусом IRRELEVANT
     {
         const auto found_docs = server.FindTopDocuments("квас на площади"s, DocumentStatus::IRRELEVANT);
-        assert(found_docs.size() == 1);
-        assert(found_docs[0].id == 3);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        ASSERT_EQUAL(found_docs[0].id, 3);
     }
 
     // Проверяем документы со статусом REMOVED
     {
         const auto found_docs = server.FindTopDocuments("квас на площади"s, DocumentStatus::REMOVED);
-        assert(found_docs.size() == 1);
-        assert(found_docs[0].id == 4);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        ASSERT_EQUAL(found_docs[0].id, 4);
     }
 
 }
@@ -506,25 +600,25 @@ SearchServer server;
         const double top_doc_relevance4 = 0.047947;
         const double EPSILON = 1e-6;
 
-        assert(abs(found_docs[0].relevance - top_doc_relevance1) < EPSILON);
-        assert(abs(found_docs[1].relevance - top_doc_relevance2) < EPSILON);
-        assert(abs(found_docs[2].relevance - top_doc_relevance3) < EPSILON);
-        assert(abs(found_docs[3].relevance - top_doc_relevance4) < EPSILON);
+        ASSERT(abs(found_docs[0].relevance - top_doc_relevance1) < EPSILON);
+        ASSERT(abs(found_docs[1].relevance - top_doc_relevance2) < EPSILON);
+        ASSERT(abs(found_docs[2].relevance - top_doc_relevance3) < EPSILON);
+        ASSERT(abs(found_docs[3].relevance - top_doc_relevance4) < EPSILON);
     }
 }
 
 // Функция TestSearchServer является точкой входа для запуска тестов
 void TestSearchServer() {
-    TestExcludeStopWordsFromAddedDocumentContent();
-    TestAddedDocumentInQuery();
-    TestStopWordsRemovedFromDocuments();
-    TestMinusWordAreNotInSearchResult();
-    TestDocumentsMatching();
-    TestRelevanceDescendingSorting();
-    TestCorrectRatingComputing();
-    TestSearchResultsFilteredWithPredicates();
-    TestSearchDocumentsWithStatus();
-    TestCorrectRelevanceComputing();
+    RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
+    RUN_TEST(TestAddedDocumentInQuery);
+    RUN_TEST(TestStopWordsRemovedFromDocuments);
+    RUN_TEST(TestMinusWordAreNotInSearchResult);
+    RUN_TEST(TestDocumentsMatching);
+    RUN_TEST(TestRelevanceDescendingSorting);
+    RUN_TEST(TestCorrectRatingComputing);
+    RUN_TEST(TestSearchResultsFilteredWithPredicates);
+    RUN_TEST(TestSearchDocumentsWithStatus);
+    RUN_TEST(TestCorrectRelevanceComputing);
 }
 
 // --------- Окончание модульных тестов поисковой системы -----------
