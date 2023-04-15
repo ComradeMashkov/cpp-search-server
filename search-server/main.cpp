@@ -9,7 +9,10 @@
 
 using namespace std;
 
+// Максимальное число для вывода топ-документов
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+
+// Минимальная погрешность сравнения для чисел с плавающей точкой
 const double MIN_TOLERANCE_COMPARISON = 1e-6;
 
 string ReadLine() {
