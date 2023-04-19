@@ -102,9 +102,6 @@ public:
         if (documents_.count(document_id)) {
             throw invalid_argument("Такой ID документа уже существует"s);
         }
-        if (!IsValidWord(document)) {
-            throw invalid_argument("В тексте добавленного документа содержатся недопустимые символы"s);
-        }
 
         const vector<string> words = SplitIntoWordsNoStop(document);
         const double inv_word_count = 1.0 / words.size();
@@ -121,9 +118,9 @@ public:
         if (!ParseQuery(raw_query, query)) {
             throw invalid_argument("В поисковом запросе присутствуют два знака минуса подряд и/или отсутствуют слова после знака минус"s);
         }
-        if (!IsValidWord(raw_query)) {
-            throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
-        }
+        // if (!IsValidWord(raw_query)) {
+        //     throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
+        // }
 
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
@@ -161,9 +158,9 @@ public:
         if (!ParseQuery(raw_query, query)) {
             throw invalid_argument("В поисковом запросе присутствуют два знака минуса подряд и/или отсутствуют слова после знака минус"s);
         }
-        if (!IsValidWord(raw_query)) {
-            throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
-        }
+        // if (!IsValidWord(raw_query)) {
+        //     throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
+        // }
         
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -205,10 +202,26 @@ private:
         return stop_words_.count(word) > 0;
     }
 
+    // Удаляет вхождения недопустимых символов в строку
+    // Необходима для передачи в throw и корректного вывода (иначе на нулевом терминаторе строка обрывается)
+    string ShieldString(const string& str) const {
+        string result = ""s;
+        for (char chr : str) {
+            if (chr >= '\0' && chr < ' ') {
+                continue;
+            }
+            result += chr;
+        }
+        return result;
+    }
+
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
             if (!IsStopWord(word)) {
+                if (!IsValidWord(word)) {
+                    throw invalid_argument(ShieldString("В слове "s + word + " присутствуют недопустимые символы"s));
+                }
                 words.push_back(word);
             }
         }
