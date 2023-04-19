@@ -188,10 +188,7 @@ public:
     }
     
     int GetDocumentId(int index) const {
-        if (index < 0 || index > GetDocumentCount()) {
-            throw out_of_range("Индекс переданного документа выходит за пределы диапазаона [0; кол-во документов)"s);
-        }
-        return document_ids_[index];
+        return document_ids_.at(index);
     }
 
 private:
@@ -371,11 +368,11 @@ int main() {
         cout << "Ошибка: "s << e.what() << endl;
     }
 
-    // Попытка добавить документ с недопустимыми символами
+    // Попытка узнать id несуществующего документа
     try {
         search_server.GetDocumentId(3);
     } catch (const out_of_range& e) {
-        cout << "Ошибка: "s << e.what() << endl;
+        cout << "Ошибка: Индекс переданного документа выходит за пределы диапазаона [0; кол-во документов)"s << endl;
     }
     
     return 0;
