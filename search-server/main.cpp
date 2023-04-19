@@ -114,10 +114,7 @@ public:
 
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
-        Query query;
-        if (!ParseQuery(raw_query, query)) {
-            throw invalid_argument("В поисковом запросе присутствуют два знака минуса подряд и/или отсутствуют слова после знака минус"s);
-        }
+        const Query query = ParseQuery(raw_query);
         // if (!IsValidWord(raw_query)) {
         //     throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
         // }
@@ -154,10 +151,7 @@ public:
     }
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id, tuple<vector<string>, DocumentStatus>& result) const {
-        Query query;
-        if (!ParseQuery(raw_query, query)) {
-            throw invalid_argument("В поисковом запросе присутствуют два знака минуса подряд и/или отсутствуют слова после знака минус"s);
-        }
+        const Query query = ParseQuery(raw_query);
         // if (!IsValidWord(raw_query)) {
         //     throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
         // }
@@ -220,7 +214,7 @@ private:
         for (const string& word : SplitIntoWords(text)) {
             if (!IsStopWord(word)) {
                 if (!IsValidWord(word)) {
-                    throw invalid_argument(ShieldString("В слове "s + word + " присутствуют недопустимые символы"s));
+                    throw invalid_argument(ShieldString("В слове \""s + word + "\" присутствуют недопустимые символы"s));
                 }
                 words.push_back(word);
             }
@@ -245,7 +239,7 @@ private:
         bool is_stop;
     };
 
-    bool ParseQueryWord(string text, QueryWord& query_word) const {
+    QueryWord ParseQueryWord(string text) const {
         bool is_minus = false;
         
         // Word shouldn't be empty
@@ -254,12 +248,16 @@ private:
             text = text.substr(1);
         }
 
+        if (!IsValidWord(text)) {
+            throw invalid_argument(ShieldString("В слове \""s + text + "\" запроса содержатся недопустимые символы"s));
+        }
+
         if (text[0] == '-' || text.size() == 0) {
-            return false;
+            throw invalid_argument("В поисковом запросе присутствуют два знака минуса подряд и/или отсутствуют слова после знака минус"s);
         }
         
-        query_word = {text, is_minus, IsStopWord(text)};
-        return true;
+        const QueryWord query_word = {text, is_minus, IsStopWord(text)};
+        return query_word;
     }
 
     struct Query {
@@ -267,13 +265,10 @@ private:
         set<string> minus_words;
     };
 
-    bool ParseQuery(const string& text, Query& raw_query) const {
+    Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
-            QueryWord query_word;
-            if (!ParseQueryWord(word, query_word)) {
-                return false;
-            }
+            QueryWord query_word = ParseQueryWord(word);
             if (!query_word.is_stop) {
                 if (query_word.is_minus) {
                     query.minus_words.insert(query_word.data);
@@ -283,8 +278,7 @@ private:
                 }
             }
         }
-        raw_query = query;
-        return true;
+        return query;
     }
 
     // Existence required
@@ -387,6 +381,13 @@ int main() {
         search_server.GetDocumentId(3);
     } catch (const out_of_range& e) {
         cout << "Ошибка: Индекс переданного документа выходит за пределы диапазаона [0; кол-во документов)"s << endl;
+    }
+
+    // Попытка отправить запрос с недопустимыми символами
+    try {
+        search_server.FindTopDocuments("пушистый пёс и м\0дный ошейник"s);
+    } catch (const invalid_argument& e) {
+        cout << "Ошибка: "s << e.what() << endl;
     }
     
     return 0;
