@@ -9,7 +9,9 @@
 
 using namespace std;
 
+// Максимальное выводимое кол-во документов
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+// Минимальная погрешность сравнения чисел с плавающей точкой
 const double MIN_COMPARISON_TOLERANCE = 1e-6;
 
 string ReadLine() {
@@ -71,7 +73,7 @@ set<string> MakeUniqueNonEmptyStrings(const StringContainer& strings) {
 }
 
 enum class DocumentStatus {
-    ACTUAL,
+    ACTUAL,                     // статус по умолчанию
     IRRELEVANT,
     BANNED,
     REMOVED,
@@ -79,8 +81,7 @@ enum class DocumentStatus {
 
 class SearchServer {
 public:
-    inline static constexpr int INVALID_DOCUMENT_ID = -1;
-    
+    // Конструктор, принимающий контейнер строк
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
@@ -89,6 +90,7 @@ public:
         }
     }
 
+    // Конструктор, принимающий строку
     explicit SearchServer(const string& stop_words_text)
         : SearchServer(
             SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
@@ -115,9 +117,6 @@ public:
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
         const Query query = ParseQuery(raw_query);
-        // if (!IsValidWord(raw_query)) {
-        //     throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
-        // }
 
         auto matched_documents = FindAllDocuments(query, document_predicate);
 
@@ -150,11 +149,8 @@ public:
         return documents_.size();
     }
 
-    tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id, tuple<vector<string>, DocumentStatus>& result) const {
+    tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
         const Query query = ParseQuery(raw_query);
-        // if (!IsValidWord(raw_query)) {
-        //     throw invalid_argument("В слове/словах поискового запроса содержатся недопустимые символы"s);
-        // }
         
         vector<string> matched_words;
         for (const string& word : query.plus_words) {
@@ -239,6 +235,7 @@ private:
         bool is_stop;
     };
 
+    // Проверка слова в поисковом запросе
     QueryWord ParseQueryWord(string text) const {
         bool is_minus = false;
         
@@ -265,6 +262,7 @@ private:
         set<string> minus_words;
     };
 
+    // Проверка поискового запроса
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
@@ -281,14 +279,13 @@ private:
         return query;
     }
 
-    // Existence required
+    // Вычисление TF-IDF
     double ComputeWordInverseDocumentFreq(const string& word) const {
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
 
     template <typename DocumentPredicate>
-    vector<Document> FindAllDocuments(const Query& query,
-                                      DocumentPredicate document_predicate) const {
+    vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
