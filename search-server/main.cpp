@@ -235,15 +235,16 @@ private:
     bool ParseQueryWord(string text, QueryWord& query_word) const {
         bool is_minus = false;
         
-        if ((text[0] == '-' && text[1] == '-') || (text.size() == 1 && text[0] == '-')) {
-            return false;
-        }
-        
         // Word shouldn't be empty
         if (text[0] == '-') {
             is_minus = true;
             text = text.substr(1);
         }
+
+        if (text[0] == '-' || text.size() == 0) {
+            return false;
+        }
+        
         query_word = {text, is_minus, IsStopWord(text)};
         return true;
     }
@@ -361,7 +362,7 @@ int main() {
 
     // Попытка добавить минус-слова с двумя минусами
     try {
-        for (const Document& document : search_server.FindTopDocuments("--пушистый")) {
+        for (const Document& document : search_server.FindTopDocuments("-и --на")) {
             PrintDocument(document);
         }
     } catch (const invalid_argument& e) {
