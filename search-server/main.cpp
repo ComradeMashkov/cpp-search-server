@@ -85,7 +85,7 @@ public:
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words)
         : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
-        if ( !all_of(stop_words.begin(), stop_words.end(), [] (const string& word) { return IsValidWord(word); }) ) {
+        if ( !all_of(stop_words.begin(), stop_words.end(), IsValidWord) ) {
             throw invalid_argument("В стоп слове/словах содержатся недопустимые символы"s);
         }
     }
