@@ -208,10 +208,10 @@ private:
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
+            if (!IsValidWord(word)) {
+                throw invalid_argument(ShieldString("В слове \""s + word + "\" присутствуют недопустимые символы"s));
+            }
             if (!IsStopWord(word)) {
-                if (!IsValidWord(word)) {
-                    throw invalid_argument(ShieldString("В слове \""s + word + "\" присутствуют недопустимые символы"s));
-                }
                 words.push_back(word);
             }
         }
