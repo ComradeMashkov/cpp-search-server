@@ -10,6 +10,12 @@ void PrintRange(It range_begin, It range_end) {
         cout << *it << " "s;
     }
     cout << endl;
+
+    /* while (range_begin != range_end) {
+        cout << *range_begin << " "s;
+        ++range_begin;
+    }
+    cout << endl; */
 }
 
 int main() {
