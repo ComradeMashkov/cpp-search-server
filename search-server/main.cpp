@@ -61,6 +61,14 @@ struct Document {
     int rating = 0;
 };
 
+ostream& operator<<(ostream& out, const Document& document) {
+    out << "{ "s
+        << "document_id = "s << document.id << ", "s
+        << "relevance = "s << document.relevance << ", "s
+        << "rating = "s << document.rating << " }"s;
+    return out;
+}
+
 template <typename StringContainer>
 set<string> MakeUniqueNonEmptyStrings(const StringContainer& strings) {
     set<string> non_empty_strings;
@@ -324,68 +332,91 @@ private:
     }
 };
 
+template <typename Iterator>
+class IteratorRange {
+public:
+    explicit IteratorRange(Iterator begin, Iterator end)
+        : first_(begin)
+        , last_(end)
+        , size_(distance(first_, last_)) {
+        }
+
+    Iterator begin() const {
+        return first_;
+    }
+
+    Iterator end() const {
+        return last_;
+    }
+
+    size_t size() const {
+        return size_;
+    }
+
+private:
+    Iterator first_, last_;
+    size_t size_;
+};
+
+template <typename Iterator>
+ostream& operator<<(ostream& out, const IteratorRange<Iterator>& range) {
+    for (Iterator it = range.begin(); it != range.end(); ++it) {
+        out << *it;
+    }
+    return out;
+}
+
+template <typename Iterator>
+class Paginator {
+public:
+    Paginator(Iterator begin, Iterator end, size_t page_size) {
+        for (size_t i = distance(begin, end); i > 0;) {
+            const size_t current_page_size = min(page_size, i);
+            const Iterator current_page_end = next(begin, current_page_size);
+            pages_.push_back(IteratorRange<Iterator>(begin, current_page_end));
+
+            i -= current_page_size;
+            begin = current_page_end;
+        }
+    }
+
+    auto begin() const {
+        return pages_.begin();
+    }
+
+    auto end() const {
+        return pages_.end();
+    }
+
+    size_t size() const {
+        return pages_.size();
+    }
+
+private:
+    vector<IteratorRange<Iterator>> pages_;
+};
+
+template <typename Container>
+auto Paginate(const Container& c, size_t page_size) {
+    return Paginator(begin(c), end(c), page_size);
+}
+
 // ==================== для примера =========================
 
-void PrintDocument(const Document& document) {
-    cout << "{ "s
-         << "document_id = "s << document.id << ", "s
-         << "relevance = "s << document.relevance << ", "s
-         << "rating = "s << document.rating << " }"s << endl;
-}
 int main() {
-    SearchServer search_server("и в на"s);
-    search_server.AddDocument(1, "пушистый кот пушистый хвост"s, DocumentStatus::ACTUAL, {7, 2, 7});
+    SearchServer search_server("and with"s);
+    search_server.AddDocument(1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, {7, 2, 7});
+    search_server.AddDocument(2, "funny pet with curly hair"s, DocumentStatus::ACTUAL, {1, 2, 3});
+    search_server.AddDocument(3, "big cat nasty hair"s, DocumentStatus::ACTUAL, {1, 2, 8});
+    search_server.AddDocument(4, "big dog cat Vladislav"s, DocumentStatus::ACTUAL, {1, 3, 2});
+    search_server.AddDocument(5, "big dog hamster Borya"s, DocumentStatus::ACTUAL, {1, 1, 1});
+    const auto search_results = search_server.FindTopDocuments("curly dog"s);
+    int page_size = 2;
+    const auto pages = Paginate(search_results, page_size);
 
-    // Попытка добавить стоп слова с недопустимыми символами
-    try {
-        SearchServer search_server_2("и в\0 на"s);
-    } catch (const invalid_argument& e) {
-        cout << "Ошибка: "s << e.what() << endl;
+    // Выводим найденные документы по страницам
+    for (auto page = pages.begin(); page != pages.end(); ++page) {
+        cout << *page << endl;
+        cout << "Page break"s << endl;
     }
-
-    // Попытка добавить такой же ID
-    try {
-        search_server.AddDocument(1, "пушистый пёс и модный ошейник"s, DocumentStatus::ACTUAL, {1, 2});
-    } catch (const invalid_argument& e) {
-        cout << "Ошибка: "s << e.what() << endl;
-    }
-
-    // Попытка добавить отрицательный ID
-    try {
-        search_server.AddDocument(-1, "пушистый пёс и модный ошейник"s, DocumentStatus::ACTUAL, {1, 2});
-    } catch (const invalid_argument& e) {
-        cout << "Ошибка: "s << e.what() << endl;
-    }
-
-    // Попытка добавить документ с недопустимыми символами
-    try {
-        search_server.AddDocument(2, "пушистый п\0ёс и модный ошейник"s, DocumentStatus::ACTUAL, {1, 2});
-    } catch (const invalid_argument& e) {
-        cout << "Ошибка: "s << e.what() << endl;
-    }
-
-    // Попытка добавить минус-слова с двумя минусами
-    try {
-        for (const Document& document : search_server.FindTopDocuments("-и --на")) {
-            PrintDocument(document);
-        }
-    } catch (const invalid_argument& e) {
-        cout << "Ошибка: "s << e.what() << endl;
-    }
-
-    // Попытка узнать id несуществующего документа
-    try {
-        search_server.GetDocumentId(3);
-    } catch (const out_of_range& e) {
-        cout << "Ошибка: Индекс переданного документа выходит за пределы диапазаона [0; кол-во документов)"s << endl;
-    }
-
-    // Попытка отправить запрос с недопустимыми символами
-    try {
-        search_server.FindTopDocuments("пушистый пёс и м\0дный ошейник"s);
-    } catch (const invalid_argument& e) {
-        cout << "Ошибка: "s << e.what() << endl;
-    }
-    
-    return 0;
 }
