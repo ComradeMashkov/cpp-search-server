@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 
 SearchServer::SearchServer(const std::string& stop_words_text) 
     : SearchServer(SplitIntoWords(stop_words_text)) {        
@@ -100,10 +101,7 @@ std::vector<std::string> SearchServer::SplitIntoWordsNoStop(const std::string& t
     if (ratings.empty()) {
         return 0;
     }
-    int rating_sum = 0;
-    for (const int rating : ratings) {
-        rating_sum += rating;
-    }
+    int rating_sum = std::accumulate(ratings.begin(), ratings.end(), 0);
     return rating_sum / static_cast<int>(ratings.size());
 }
 
