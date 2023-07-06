@@ -10,8 +10,6 @@
 #include "document.h"
 #include "string_processing.h"
 
-using namespace std::string_literals;
-
 // Максимальное выводимое кол-во документов
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 // Минимальная погрешность сравнения чисел с плавающей точкой

@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <numeric>
 
+using namespace std::string_literals;
+
 SearchServer::SearchServer(const std::string& stop_words_text) 
     : SearchServer(SplitIntoWords(stop_words_text)) {        
  } 
