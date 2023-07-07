@@ -89,6 +89,7 @@ private:
 template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
+    using namespace std::string_literals;
     if ( !all_of(stop_words.begin(), stop_words.end(), IsValidWord) ) {
         throw std::invalid_argument("В стоп слове/словах содержатся недопустимые символы"s);
     }
