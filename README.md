@@ -13,17 +13,17 @@
 Для сборки проекта необходимо выполнить 3 шага:
 
 1. Копирование репозитория
-```
-N/A
+```bash
+git clone https://github.com/ComradeMashkov/cpp-search-server.git
 ```
 
 2. Компиляция с использованием clang
-```
+```bash
 N/A
 ```
 
 3. Компиляция с использованием gcc
-```
+```bash
 N/A
 ```
 
